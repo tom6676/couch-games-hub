@@ -43,49 +43,23 @@ def clean_html_description(raw_html):
     cleaned = re.sub(r'\n\s*\n+', '\n\n', cleaned)
     return cleaned.strip()
 
-def detect_platforms(data):
-    platforms = ["PC"]
-    platforms_raw = data.get("platforms", {})
-    if platforms_raw.get("windows") or platforms_raw.get("mac") or platforms_raw.get("linux"):
-        if "PC" not in platforms:
-            platforms.append("PC")
-
-    categories = [c.get("description", "").lower() for c in data.get("categories", [])]
-    controller = data.get("controller_support", "none")
-    
-    if controller == "full" or any("controller" in c for c in categories):
-        platforms.extend(["PlayStation", "Xbox", "Nintendo Switch"])
-    else:
-        platforms.extend(["PlayStation", "Xbox"])
-        
-    return list(dict.fromkeys(platforms))
-
-def get_detailed_price_en(app_id):
-    url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&cc=us&l=english"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept-Language": "en-US,en;q=0.9"}
-    try:
-        res = requests.get(url, headers=headers, timeout=8).json()
-        if not res:
-            return None
-        first_key = next(iter(res))
-        entry = res[first_key]
-        if entry.get("success"):
-            data = entry["data"]
-            po = data.get("price_overview")
-            if po:
-                return {
-                    "title": data.get("name"),
-                    "discount_pct": po.get("discount_percent", 0),
-                    "final_price": clean_currency(po.get("final_formatted", "")),
-                    "initial_price": clean_currency(po.get("initial_formatted", ""))
-                }
-    except Exception as e:
-        print(f"Error fetching price for {app_id}: {e}")
-    return None
+def detect_player_count(desc_text, short_text):
+    full_text = (desc_text + " " + short_text).lower()
+    if any(w in full_text for w in ["8 players", "8-player", "up to 8", "8 friends", "8 concurrent"]):
+        return "8 Players (A Lot! 🛋️🎉)"
+    elif any(w in full_text for w in ["6 players", "6-player", "up to 6"]):
+        return "6 Players"
+    elif any(w in full_text for w in ["4 players", "4-player", "up to 4", "four players"]):
+        return "4 Players"
+    elif any(w in full_text for w in ["3 players", "3-player", "up to 3"]):
+        return "3 Players"
+    elif any(w in full_text for w in ["2 players only", "two players", "co-op only", "pair"]):
+        return "2 Players Only"
+    return "2-4 Players"
 
 def get_full_game_payload(app_id, action_type):
     url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&cc=us&l=english"
-    headers = {"User-Agent": "Mozilla/5.0", "Accept-Language": "en-US,en;q=0.9"}
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
         res = requests.get(url, headers=headers, timeout=10).json()
         if not res:
@@ -96,70 +70,53 @@ def get_full_game_payload(app_id, action_type):
             return None
         data = entry["data"]
         title = data.get("name", "Unknown Game")
-        header_image = data.get("header_image", "")
+        banner = data.get("header_image", "")
 
-        preview_video = ""
-        movies = data.get("movies", [])
-        if movies:
-            first_movie = movies[0]
-            mp4_dict = first_movie.get("mp4", {})
-            webm_dict = first_movie.get("webm", {})
-            raw_url = mp4_dict.get("max") or mp4_dict.get("480") or webm_dict.get("max") or ""
-            if raw_url:
-                preview_video = raw_url.replace("http://", "https://")
+        # Screenshot per carosello
+        raw_shots = data.get("screenshots", [])
+        screenshots = [s.get("path_full") for s in raw_shots[:4] if s.get("path_full")]
 
         po = data.get("price_overview", {})
         price = clean_currency(po.get("final_formatted", "Free"))
-        original_price = clean_currency(po.get("initial_formatted", price))
+        orig_price = clean_currency(po.get("initial_formatted", price))
         discount = po.get("discount_percent", 0)
 
         controller_support = data.get("controller_support", "none")
-        raw_categories = [c.get("description", "") for c in data.get("categories", [])]
-
-        raw_desc = data.get("detailed_description", "")
-        clean_desc = clean_html_description(raw_desc)
+        desc = clean_html_description(data.get("detailed_description", ""))
         short_desc = clean_html_description(data.get("short_description", ""))
+        players = detect_player_count(desc, short_desc)
 
-        max_players = "2-4"
-        desc_lower = (clean_desc + " " + short_desc).lower()
-        if any(w in desc_lower for w in ["8 player", "8-player", "up to 8"]):
-            max_players = "2-8"
-        elif any(w in desc_lower for w in ["6 player", "6-player", "up to 6"]):
-            max_players = "2-6"
-        elif any(w in desc_lower for w in ["2 player only", "two players", "co-op only", "pair"]):
-            max_players = "2"
+        platforms = ["PC", "Steam"]
+        if controller_support == "full":
+            platforms.extend(["PlayStation", "Xbox", "Nintendo Switch", "Game Pass", "GeForce NOW"])
 
-        g2a_info = get_g2a_deal(title)
-
-        status_mapping = {
+        status_map = {
             "approve_tested": "TESTED_COUCH_PROOF",
             "approve_untested": "LISTED_DEAL",
             "bundle": "BUNDLE_CANDIDATE"
         }
 
-        platforms = detect_platforms(data)
+        g2a_info = get_g2a_deal(title)
 
         return {
             "id": str(app_id),
             "title": title,
-            "banner": header_image,
-            "preview_video": preview_video,
-            "players": f"{max_players} Players",
+            "banner": banner,
+            "screenshots": screenshots,
+            "players": players,
             "price": price,
-            "original_price": original_price,
+            "original_price": orig_price,
             "discount_pct": discount,
             "controller_ready": controller_support in ["full", "partial"],
-            "controller_type": "Full Controller Support" if controller_support == "full" else "Partial / Keyboard",
             "store_url": f"https://store.steampowered.com/app/{app_id}/",
             "g2a_url": g2a_info["url"],
-            "status": status_mapping.get(action_type, "LISTED_DEAL"),
-            "categories": [c for c in raw_categories if any(k.lower() in c.lower() for k in ["co-op", "shared", "split", "multi-player"])],
-            "description": clean_desc,
+            "status": status_map.get(action_type, "LISTED_DEAL"),
+            "description": desc,
             "short_description": short_desc,
-            "platforms": platforms
+            "platforms": list(dict.fromkeys(platforms))
         }
     except Exception as e:
-        print(f"Error building payload for {app_id}: {e}")
+        print(f"Error fetching {app_id}: {e}")
         return None
 
 def push_to_supabase(payload):
@@ -177,136 +134,89 @@ def push_to_supabase(payload):
         print(f"Supabase push error: {e}")
         return False
 
-def fetch_steam_couch_deals(min_discount=20, max_results=15):
-    query_url = (
+def fetch_all_couch_deals():
+    url = (
         "https://store.steampowered.com/search/results/"
         "?query=&start=0&count=50&dynamic_data=&sort_by=_ASC"
         "&category2=24%2C39"
         "&specials=1"
         "&cc=us&l=english&json=1"
     )
-    headers = {"User-Agent": "Mozilla/5.0", "Accept-Language": "en-US,en;q=0.9"}
-    deals = []
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
-        r = requests.get(query_url, headers=headers, timeout=10).json()
-        for item in r.get("items", []):
-            match = re.search(r"/apps/(\d+)/", item.get("logo", ""))
-            if not match:
-                continue
-            app_id = match.group(1)
-            details = get_detailed_price_en(app_id)
-            if not details:
-                continue
-            if details["discount_pct"] >= min_discount:
-                deals.append({
-                    "app_id": app_id,
-                    "title": details["title"],
-                    "discount_pct": details["discount_pct"],
-                    "final_price": details["final_price"],
-                    "initial_price": details["initial_price"],
-                    "url": f"https://store.steampowered.com/app/{app_id}/"
-                })
-            if len(deals) >= max_results:
-                break
+        r = requests.get(url, headers=headers, timeout=10).json()
+        return r.get("items", [])
     except Exception as e:
         print(f"Fetch error: {e}")
-    return deals
+        return []
 
 async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     action, app_id = query.data.split(":")
 
-    approved_list = load_data(APPROVED_FILE, [])
-
-    if action in ["approve_tested", "approve_untested", "bundle"]:
-        entry = {"app_id": app_id, "status": action}
-        if entry not in approved_list:
-            approved_list.append(entry)
-            save_data(APPROVED_FILE, approved_list)
-
-        print(f"\n[ACTION] Processing {action} for AppID {app_id}...")
+    if action in ["approve_tested", "approve_untested"]:
         payload = get_full_game_payload(app_id, action)
-        cloud_synced = False
         if payload:
-            cloud_synced = push_to_supabase(payload)
-
-        await query.edit_message_reply_markup(reply_markup=None)
-        if cloud_synced:
-            badge_msg = "🛋 Verified Couch-Proof" if action == "approve_tested" else "🌐 Standard Verified Deal"
-            await query.message.reply_text(f"✅ *{payload['title']}* published live on Supabase ({badge_msg})!", parse_mode="Markdown")
-        else:
-            await query.message.reply_text("✅ Saved locally. (Temporary cloud connection issue)")
-
+            push_to_supabase(payload)
+            badge_name = "🛋️ Couch-Proof (Verified)" if action == "approve_tested" else "🌐 Untested (Community Notice)"
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.message.reply_text(f"✅ *{payload['title']}* aggiunto a catalogo come *{badge_name}* ({payload['players']})!", parse_mode="Markdown")
     elif action == "reject":
-        print(f"\n[ACTION] ❌ Rejected AppID {app_id}")
         await query.edit_message_reply_markup(reply_markup=None)
-        await query.message.reply_text("❌ *Deal rejected.*")
+        await query.message.reply_text("❌ *Gioco scartato.*")
 
 async def run_scan_cycle(bot):
-    print(f"\n[{datetime.datetime.now().strftime('%H:%M:%S')}] 🔍 Starting scheduled couch deals scan...")
     history = set(load_data(HISTORY_FILE, []))
-    deals = fetch_steam_couch_deals(min_discount=20, max_results=10)
+    items = fetch_all_couch_deals()
 
-    count = 0
-    for deal in deals:
-        app_id = deal["app_id"]
+    for item in items:
+        match = re.search(r"/apps/(\d+)/", item.get("logo", ""))
+        if not match:
+            continue
+        app_id = match.group(1)
         if app_id in history:
             continue
 
-        g2a_info = get_g2a_deal(deal["title"])
+        payload = get_full_game_payload(app_id, "approve_untested")
+        if not payload:
+            continue
 
+        # Inserisci nel catalogo come untested finché non decidi tu
+        push_to_supabase(payload)
+
+        # Invia la scheda a Telegram con dettagli precisi sul numero di giocatori
         keyboard = [
             [
-                InlineKeyboardButton("🛋️ Approve (Couch-Proof)", callback_data=f"approve_tested:{app_id}"),
-                InlineKeyboardButton("🌐 Publish (No Badge)", callback_data=f"approve_untested:{app_id}")
+                InlineKeyboardButton(f"🛋️ Conferma Couch-Proof ({payload['players']})", callback_data=f"approve_tested:{app_id}"),
+                InlineKeyboardButton("🌐 Lascia Untested", callback_data=f"approve_untested:{app_id}")
             ],
             [
-                InlineKeyboardButton("📦 Add to Bundle", callback_data=f"bundle:{app_id}"),
-                InlineKeyboardButton("❌ Discard", callback_data=f"reject:{app_id}")
-            ],
-            [
-                InlineKeyboardButton("🏷️ G2A Key Deal", url=g2a_info["url"]),
-                InlineKeyboardButton("🛒 Steam Page", url=deal["url"])
+                InlineKeyboardButton("❌ Rimuovi dal Catalogo", callback_data=f"reject:{app_id}"),
+                InlineKeyboardButton("🛒 Steam Page", url=payload["store_url"])
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        text = (
-            f"🎮 *NEW COUCH CO-OP DEAL FOUND!*\n\n"
-            f"🕹 *Title:* {deal['title']}\n"
-            f"👥 *Multiplayer:* Shared/Split Screen\n"
-            f"💥 *Discount:* -{deal['discount_pct']}% at *{deal['final_price']}* (was {deal['initial_price']})\n\n"
-            f"Choose publication status:"
+        msg_text = (
+            f"🎮 *NUOVO TITOLO COUCH CO-OP RILEVATO!*\n\n"
+            f"🕹 *Titolo:* {payload['title']}\n"
+            f"👥 *Giocatori Rilevati:* {payload['players']}\n"
+            f"💥 *Prezzo:* {payload['price']} (-{payload['discount_pct']}%)\n\n"
+            f"È già visibile sul sito con avviso di test. Vuoi certificarlo Couch-Proof?"
         )
 
-        await bot.send_message(
-            chat_id=TELEGRAM_CHAT_ID,
-            text=text,
-            parse_mode="Markdown",
-            reply_markup=reply_markup
-        )
+        await bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=msg_text, parse_mode="Markdown", reply_markup=reply_markup)
         history.add(app_id)
-        count += 1
         await asyncio.sleep(1)
 
     save_data(HISTORY_FILE, list(history))
-    print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] ✅ Scan complete: {count} new deals sent to Telegram.")
-
-async def schedule_worker(app):
-    await run_scan_cycle(app.bot)
-    while True:
-        delay_seconds = random.randint(12600, 16200)
-        print(f"⏱ Next scan scheduled in ~{round(delay_seconds/3600, 1)} hours.")
-        await asyncio.sleep(delay_seconds)
-        await run_scan_cycle(app.bot)
 
 async def on_startup(app):
-    asyncio.create_task(schedule_worker(app))
-    print("👂 Bot listening and Supabase sync ready.")
+    asyncio.create_task(run_scan_cycle(app.bot))
+    print("Agent in ascolto e scansione Telegram pronta.")
 
 def main():
-    print("Starting Couch Agent Complete (4 Time Slots + G2A + Supabase)...")
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).post_init(on_startup).build()
     app.add_handler(CallbackQueryHandler(handle_button))
     app.run_polling()
