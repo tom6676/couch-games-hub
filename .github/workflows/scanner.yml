@@ -1,0 +1,35 @@
+name: Couch Deals Scanner 4x Daily
+
+on:
+  schedule:
+    # 4 Scansioni giornaliere autonome
+    - cron: '30 8 * * *'   # 10:30 Mattino (CET)
+    - cron: '15 13 * * *'  # 15:15 Pomeriggio (CET)
+    - cron: '05 17 * * *'  # 19:05 Sera (saldi Steam)
+    - cron: '45 22 * * *'  # 00:45 Notte (CET)
+  workflow_dispatch:        # Permette anche l'avvio manuale dal sito GitHub
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install requests python-telegram-bot
+
+      - name: Run Deals Scanner
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python run_cloud_scan.py

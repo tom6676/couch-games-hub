@@ -1,0 +1,4 @@
+config.py 
+__pycache__/ 
+notified_deals.json 
+approved_games.json

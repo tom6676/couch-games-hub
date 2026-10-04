@@ -1,0 +1,66 @@
+[
+  {
+    "id": "1426210",
+    "title": "It Takes Two",
+    "banner": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1426210/header_italian.jpg?t=1777395376",
+    "preview_video": "https://video.cloudflare.steamstatic.com/store_trailers/256827093/movie480.mp4",
+    "players": "2 Giocatori",
+    "price": "11,99€",
+    "original_price": "39,99€",
+    "discount_pct": 70,
+    "controller_ready": true,
+    "controller_type": "Supporto Completo Gamepad",
+    "store_url": "https://store.steampowered.com/app/1426210/",
+    "g2a_url": "https://www.g2a.com/search?query=It+Takes+Two+Steam+Key&ref=reflink-07f53ba10b",
+    "status": "TESTED_COUCH_PROOF",
+    "categories": [
+      "Co-op",
+      "Co-op online",
+      "Co-op locale a schermo condiviso",
+      "Schermo condiviso"
+    ]
+  },
+  {
+    "id": "2001120",
+    "title": "Split Fiction",
+    "banner": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2001120/header.jpg?t=1763484567",
+    "preview_video": "https://video.cloudflare.steamstatic.com/store_trailers/257116893/movie480.mp4",
+    "players": "2-4 Giocatori",
+    "price": "32,49€",
+    "original_price": "49,99€",
+    "discount_pct": 35,
+    "controller_ready": true,
+    "controller_type": "Supporto Completo Gamepad",
+    "store_url": "https://store.steampowered.com/app/2001120/",
+    "g2a_url": "https://www.g2a.com/search?query=Split+Fiction+Steam+Key&ref=reflink-07f53ba10b",
+    "status": "TESTED_COUCH_PROOF",
+    "categories": [
+      "Co-op",
+      "Co-op online",
+      "Co-op locale a schermo condiviso",
+      "Schermo condiviso"
+    ]
+  },
+  {
+    "id": "2475460",
+    "title": "SOS OPS!",
+    "banner": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2475460/a0a7b4a2b2526ae76cab0f0ba6e87e63d962c1a7/header.jpg?t=1790372249",
+    "preview_video": "https://video.cloudflare.steamstatic.com/store_trailers/257435448/movie480.mp4",
+    "players": "2-4 Giocatori",
+    "price": "0,49€",
+    "original_price": "4,99€",
+    "discount_pct": 90,
+    "controller_ready": false,
+    "controller_type": "Supporto Parziale / Tastiera",
+    "store_url": "https://store.steampowered.com/app/2475460/",
+    "g2a_url": "https://www.g2a.com/search?query=SOS+OPS%21+Steam+Key&ref=reflink-07f53ba10b",
+    "status": "TESTED_COUCH_PROOF",
+    "categories": [
+      "Co-op",
+      "Co-op online",
+      "Co-op locale (LAN)",
+      "Co-op locale a schermo condiviso",
+      "Schermo condiviso"
+    ]
+  }
+]

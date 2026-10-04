@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Couch Games Hub | Handpicked Local Co-op Deals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0b0f19; color: #f3f4f6; }
+    .badge-couch { background: linear-gradient(135deg, #10b981, #059669); }
+    .badge-standard { background: #374151; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #111827; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-couch text-emerald-400 text-2xl"></i>
+        <span class="text-lg font-bold tracking-wider text-white">COUCH GAMES HUB</span>
+      </div>
+      <div class="flex items-center gap-2 text-xs bg-gray-800 border border-gray-700 rounded-full px-3 py-1.5 text-gray-300">
+        <i class="fa-solid fa-earth-americas text-emerald-400"></i>
+        Store Region: <span id="detected-country" class="font-bold text-white uppercase">US</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="max-w-4xl mx-auto px-4 pt-12 pb-6 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/80 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+      <i class="fa-solid fa-gamepad"></i> Tested for Local Co-op & Party Play
+    </div>
+    <h1 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
+      What are we playing on the <span class="text-amber-400">couch tonight</span>?
+    </h1>
+    <p class="text-gray-400 text-base max-w-xl mx-auto">
+      Curated split-screen and shared-screen titles, verified controller support, and live discounted prices.
+    </p>
+  </section>
+
+  <!-- Filters -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+    <section class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 mb-8 backdrop-blur shadow-lg">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="relative md:col-span-2">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-gray-500"></i>
+          <input type="text" id="search-input" placeholder="Search by game title..." 
+                 class="w-full bg-gray-950 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+        </div>
+        <div>
+          <select id="players-filter" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+            <option value="ALL">All Player Counts</option>
+            <option value="2">2 Players Only</option>
+            <option value="4">Up to 4 Players</option>
+            <option value="6">6+ Players</option>
+          </select>
+        </div>
+        <div>
+          <select id="platform-filter" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition">
+            <option value="ALL">All Platforms</option>
+            <option value="PC">PC</option>
+            <option value="PlayStation">PlayStation</option>
+            <option value="Xbox">Xbox</option>
+            <option value="Nintendo Switch">Nintendo Switch</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between pt-3 border-t border-gray-800/60 text-xs">
+        <label class="flex items-center gap-2 cursor-pointer text-gray-300">
+          <input type="checkbox" id="badge-toggle" class="w-4 h-4 rounded text-emerald-500 bg-gray-950 border-gray-800 focus:ring-0">
+          <span>Show only <strong class="text-emerald-400">"Couch-Proof Verified"</strong> titles</span>
+        </label>
+        <span id="results-count" class="text-gray-500">Loading catalog...</span>
+      </div>
+    </section>
+
+    <!-- Games Grid -->
+    <div id="games-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </main>
+
+  <!-- Modal Details -->
+  <div id="game-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
+      <!-- Media Header -->
+      <div id="modal-media-wrap" class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
+        <img id="modal-banner" class="w-full h-full object-cover" src="" alt="Game Banner">
+        
+        <!-- Pulsante Chiudi -->
+        <button onclick="closeModal()" class="absolute top-4 right-4 z-30 bg-gray-900/80 hover:bg-gray-900 border border-gray-700 text-white rounded-full w-9 h-9 flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <!-- Pulsante Guarda Trailer Ufficiale -->
+        <a id="modal-trailer-btn" href="#" target="_blank" class="absolute bottom-4 right-4 z-20 bg-black/80 hover:bg-emerald-600 border border-gray-700 hover:border-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-2 transition backdrop-blur shadow-lg">
+          <i class="fa-solid fa-play text-emerald-400 group-hover:text-white"></i> Watch Trailer on Steam
+        </a>
+      </div>
+
+      <!-- Scrollable Details -->
+      <div class="p-6 overflow-y-auto space-y-5 flex-1">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="modal-title" class="text-2xl font-bold text-white"></h2>
+            <div id="modal-badge" class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-white"></div>
+          </div>
+          <div class="text-right">
+            <span id="modal-discount" class="text-xs font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-800 px-2 py-1 rounded"></span>
+            <div id="modal-price" class="text-xl font-bold text-white mt-1"></div>
+            <div id="modal-orig-price" class="text-xs text-gray-500 line-through"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-950 p-4 rounded-xl border border-gray-800/80">
+          <div>
+            <p class="text-xs text-gray-500 uppercase font-semibold">Available Platforms</p>
+            <div id="modal-platforms" class="flex flex-wrap gap-1.5 mt-2"></div>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 uppercase font-semibold">Specs & Controllers</p>
+            <p id="modal-specs" class="text-xs text-gray-300 mt-2 font-medium"></p>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Game Overview</h3>
+          <p id="modal-short-desc" class="text-sm text-emerald-300/90 font-medium mb-3 italic"></p>
+          <div id="modal-desc" class="text-sm text-gray-300 leading-relaxed whitespace-pre-line space-y-2 border-t border-gray-800/60 pt-3"></div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="p-4 border-t border-gray-800 bg-gray-950/80 flex flex-wrap gap-3">
+        <a id="modal-steam-link" href="#" target="_blank" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+          <i class="fa-brands fa-steam"></i> Buy on Steam Store
+        </a>
+        <a id="modal-g2a-link" href="#" target="_blank" class="flex-1 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-medium text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-key"></i> Best Key Price (G2A)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://eipnpzbkwzkvprsgpyuh.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpcG5wemJrd3prdnByc2dweXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNzE4ODAsImV4cCI6MjEwNTk0Nzg4MH0.kSt6KwQoWzGaAxk2_6dlxUfdyHeKXV5W7kHDHJJKW9Q";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allGames = [];
+    let detectedCountry = "US";
+
+    function detectUserRegion() {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+        if (tz.includes("Rome") || tz.includes("Europe/Vatican")) detectedCountry = "IT";
+        else if (tz.includes("London")) detectedCountry = "GB";
+        else if (tz.includes("Berlin") || tz.includes("Vienna")) detectedCountry = "DE";
+        else if (tz.includes("Paris")) detectedCountry = "FR";
+        else if (tz.includes("Madrid")) detectedCountry = "ES";
+        else detectedCountry = "US";
+      } catch (e) {
+        detectedCountry = "US";
+      }
+      document.getElementById("detected-country").innerText = detectedCountry;
+    }
+
+    function getRegionalSteamUrl(baseStoreUrl) {
+      if (!baseStoreUrl) return "#";
+      const separator = baseStoreUrl.includes("?") ? "&" : "?";
+      return `${baseStoreUrl}${separator}cc=${detectedCountry.toLowerCase()}`;
+    }
+
+    async function loadGames() {
+      const { data, error } = await supabaseClient
+        .from('couch_games')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById("games-grid").innerHTML = `
+          <div class="col-span-full text-center py-10 text-red-400">
+            Error loading catalog: ${error.message}
+          </div>`;
+        return;
+      }
+
+      allGames = data || [];
+      renderGames(allGames);
+    }
+
+    function renderGames(games) {
+      const container = document.getElementById("games-grid");
+      document.getElementById("results-count").innerText = `${games.length} titles found`;
+
+      if (!games.length) {
+        container.innerHTML = `<div class="col-span-full text-center py-16 text-gray-500">No couch games match your filters.</div>`;
+        return;
+      }
+
+      container.innerHTML = games.map(game => {
+        const isCouchProof = game.status === "TESTED_COUCH_PROOF";
+        const badgeHtml = isCouchProof
+          ? `<span class="badge-couch text-white text-[10px] font-bold uppercase px-2.5 py-1 rounded-full flex items-center gap-1 shadow"><i class="fa-solid fa-couch"></i> Couch-Proof Verified</span>`
+          : `<span class="badge-standard text-gray-300 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full">Deal Verified</span>`;
+
+        const regionalSteam = getRegionalSteamUrl(game.store_url);
+
+        return `
+          <div class="bg-gray-900/70 border border-gray-800 rounded-2xl overflow-hidden flex flex-col hover:border-gray-700 transition duration-300 group">
+            <div class="relative aspect-video bg-black overflow-hidden cursor-pointer" onclick="openModal('${game.id}')">
+              <img src="${game.banner}" alt="${game.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+              <div class="absolute top-3 left-3">${badgeHtml}</div>
+              <div class="absolute top-3 right-3 bg-black/80 backdrop-blur border border-gray-700 px-2 py-0.5 rounded text-xs font-bold text-emerald-400">
+                -${game.discount_pct}%
+              </div>
+            </div>
+
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="font-bold text-lg text-white group-hover:text-emerald-400 transition cursor-pointer" onclick="openModal('${game.id}')">
+                  ${game.title}
+                </h3>
+                <div class="flex items-center gap-3 text-xs text-gray-400 mt-2">
+                  <span><i class="fa-solid fa-users text-gray-500"></i> ${game.players}</span>
+                  <span><i class="fa-solid fa-gamepad text-gray-500"></i> ${game.controller_ready ? 'Gamepad Ready' : 'Partial / Keyboard'}</span>
+                </div>
+              </div>
+
+              <div class="mt-5 pt-4 border-t border-gray-800/80 flex items-center justify-between gap-2">
+                <div>
+                  <div class="text-xs text-gray-500 line-through">${game.original_price}</div>
+                  <div class="text-lg font-bold text-white">${game.price}</div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="openModal('${game.id}')" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-2 rounded-lg font-medium transition" title="Game Details">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </button>
+                  <a href="${regionalSteam}" target="_blank" class="bg-blue-600/80 hover:bg-blue-600 text-white text-xs px-3 py-2 rounded-lg font-medium transition" title="Steam Store">
+                    <i class="fa-brands fa-steam"></i>
+                  </a>
+                  <a href="${game.g2a_url}" target="_blank" class="bg-amber-600/80 hover:bg-amber-600 text-white text-xs px-3 py-2 rounded-lg font-medium transition" title="Best Price on G2A">
+                    <i class="fa-solid fa-key"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openModal(gameId) {
+      const game = allGames.find(g => g.id === gameId);
+      if (!game) return;
+
+      document.getElementById("modal-title").innerText = game.title;
+      document.getElementById("modal-price").innerText = game.price;
+      document.getElementById("modal-orig-price").innerText = game.original_price;
+      document.getElementById("modal-discount").innerText = `-${game.discount_pct}%`;
+      document.getElementById("modal-specs").innerText = `${game.players} • ${game.controller_type}`;
+      document.getElementById("modal-short-desc").innerText = game.short_description || "";
+      document.getElementById("modal-desc").innerText = game.description || "Detailed description not available.";
+
+      const isCouchProof = game.status === "TESTED_COUCH_PROOF";
+      const badgeElem = document.getElementById("modal-badge");
+      badgeElem.className = `mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white ${isCouchProof ? 'badge-couch' : 'badge-standard'}`;
+      badgeElem.innerHTML = isCouchProof 
+        ? `<i class="fa-solid fa-couch"></i> Couch-Proof Verified` 
+        : `Deal Verified`;
+
+      // Mostra sempre il banner pulito in alta definizione
+      const banner = document.getElementById("modal-banner");
+      banner.src = game.banner;
+
+      // Link diretto al trailer ufficiale Steam senza intermediari
+      const trailerBtn = document.getElementById("modal-trailer-btn");
+      trailerBtn.href = getRegionalSteamUrl(game.store_url);
+
+      const platformsList = game.platforms && game.platforms.length ? game.platforms : ["PC"];
+      document.getElementById("modal-platforms").innerHTML = platformsList.map(p => 
+        `<span class="bg-gray-800 text-gray-300 text-[11px] font-medium px-2 py-0.5 rounded border border-gray-700">${p}</span>`
+      ).join('');
+
+      document.getElementById("modal-steam-link").href = getRegionalSteamUrl(game.store_url);
+      document.getElementById("modal-g2a-link").href = game.g2a_url;
+
+      document.getElementById("game-modal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("game-modal").classList.add("hidden");
+    }
+
+    function applyFilters() {
+      const search = document.getElementById("search-input").value.toLowerCase();
+      const players = document.getElementById("players-filter").value;
+      const platform = document.getElementById("platform-filter").value;
+      const onlyCouchProof = document.getElementById("badge-toggle").checked;
+
+      const filtered = allGames.filter(game => {
+        const matchesTitle = game.title.toLowerCase().includes(search);
+        const matchesCouch = !onlyCouchProof || game.status === "TESTED_COUCH_PROOF";
+        
+        let matchesPlayers = true;
+        if (players === "2") matchesPlayers = game.players.includes("2");
+        else if (players === "4") matchesPlayers = game.players.includes("4");
+        else if (players === "6") matchesPlayers = game.players.includes("6") || game.players.includes("8");
+
+        let matchesPlatform = true;
+        if (platform !== "ALL") {
+          matchesPlatform = game.platforms && game.platforms.some(p => p.toLowerCase().includes(platform.toLowerCase()));
+        }
+
+        return matchesTitle && matchesCouch && matchesPlayers && matchesPlatform;
+      });
+
+      renderGames(filtered);
+    }
+
+    document.getElementById("search-input").addEventListener("input", applyFilters);
+    document.getElementById("players-filter").addEventListener("change", applyFilters);
+    document.getElementById("platform-filter").addEventListener("change", applyFilters);
+    document.getElementById("badge-toggle").addEventListener("change", applyFilters);
+
+    window.addEventListener("click", (e) => {
+      if (e.target.id === "game-modal") closeModal();
+    });
+
+    detectUserRegion();
+    loadGames();
+  </script>
+</body>
+</html>
