@@ -1,567 +1,597 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Party Cloud Board — Local Co-op & Cloud</title>
-  <meta name="description" content="Filtra party games, confronta Xbox Game Pass All-Inclusive vs GeForce NOW BYOG, e compra solo CD-Key sicure." />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Couch Games Hub | Curated Local Co-op Directory</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
-            ink: "#0b1220",
-            panel: "#121a2b",
-            line: "#243049",
-            accent: "#3dd6c6",
-            warn: "#f0b429",
-            danger: "#f07178",
-          },
-          fontFamily: {
-            display: ['"Segoe UI"', "system-ui", "sans-serif"],
-            body: ['"Segoe UI"', "system-ui", "sans-serif"],
-          },
-        },
-      },
-    };
+            brand: { 500: '#10b981', 600: '#059669' }
+          }
+        }
+      }
+    }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    :root {
-      --bg-a: #0b1220;
-      --bg-b: #152238;
-    }
-    body {
-      background:
-        radial-gradient(1200px 600px at 10% -10%, #1d4e4a33, transparent 60%),
-        radial-gradient(900px 500px at 90% 0%, #3b2f6a33, transparent 55%),
-        linear-gradient(160deg, var(--bg-a), var(--bg-b));
-      min-height: 100vh;
-    }
-    .card-shot {
-      transition: opacity 0.25s ease;
-    }
-    .carousel-dot.active {
-      background: #3dd6c6;
-    }
-    #modal[aria-hidden="false"] {
-      display: flex;
-    }
+    .badge-couch { background: linear-gradient(135deg, #10b981, #059669); }
+    .badge-untested { background: #4b5563; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
   </style>
 </head>
-<body class="font-body text-slate-100 antialiased">
-  <header class="border-b border-line/80 bg-ink/70 backdrop-blur">
-    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5">
-      <div>
-        <p class="text-xs uppercase tracking-[0.2em] text-accent">Party Cloud Board</p>
-        <h1 class="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Local co-op · Cloud ready</h1>
+<body class="min-h-screen flex flex-col font-sans transition-colors duration-200 bg-gray-50 text-gray-900 dark:bg-[#0b0f19] dark:text-gray-100">
+
+  <!-- Header -->
+  <header class="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur sticky top-0 z-40 transition-colors">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <i class="fa-solid fa-couch text-emerald-500 text-2xl"></i>
+        <span class="text-lg font-bold tracking-wider">COUCH GAMES HUB</span>
       </div>
-      <div class="flex flex-wrap gap-2 text-xs">
-        <span class="rounded border border-accent/40 bg-accent/10 px-3 py-1 text-accent" title="Catalogo incluso nell'abbonamento">Xbox Game Pass · All-Inclusive</span>
-        <span class="rounded border border-warn/40 bg-warn/10 px-3 py-1 text-warn" title="Serve licenza propria (BYOG)">GeForce NOW · BYOG</span>
+      
+      <div class="flex items-center gap-3">
+        <!-- Region Detector -->
+        <div class="flex items-center gap-2 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-300">
+          <i class="fa-solid fa-earth-americas text-emerald-500"></i>
+          Region: <span id="detected-country" class="font-bold uppercase">US</span>
+        </div>
+
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-emerald-500 transition">
+          <i id="theme-icon" class="fa-solid fa-moon"></i>
+        </button>
       </div>
     </div>
   </header>
 
-  <main class="mx-auto max-w-6xl px-4 py-8">
-    <section class="mb-8 rounded-2xl border border-line bg-panel/80 p-5 shadow-xl shadow-black/20">
-      <h2 class="mb-2 text-lg font-semibold">Filtra per giocatori</h2>
-      <p class="mb-4 text-sm text-slate-400">Quanti siete sul divano? Filtra i titoli local multiplayer.</p>
-      <div id="player-filters" class="flex flex-wrap gap-2" role="group" aria-label="Filtro giocatori">
-        <!-- filled by JS: 2,3,4,5,6, A Lot! -->
+  <!-- Hero Section -->
+  <section class="max-w-4xl mx-auto px-4 pt-10 pb-6 text-center">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
+      <i class="fa-solid fa-gamepad"></i> Tested & Community-Verified Couch Multiplayer
+    </div>
+    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">
+      What are we playing on the <span class="text-amber-500 dark:text-amber-400">couch tonight</span>?
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400 text-base max-w-2xl mx-auto leading-relaxed">
+      Every single local co-op & split-screen game documented. Verified gamepad configurations, official store discounts, cloud streaming availability, and buyer-protected key comparisons.
+    </p>
+  </section>
+
+  <!-- Filters Area -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+    <section class="bg-white dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 rounded-2xl p-5 mb-8 backdrop-blur shadow-sm dark:shadow-lg transition-colors">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <!-- Search Input -->
+        <div class="relative md:col-span-6">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-gray-400"></i>
+          <input type="text" id="search-input" placeholder="Search by game title, franchise or genre..." 
+                 class="w-full bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
+        </div>
+
+        <!-- Exact Players Filter -->
+        <div class="md:col-span-3">
+          <select id="players-filter" class="w-full bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
+            <option value="ALL">All Player Counts</option>
+            <option value="2">2 Players (Couples / Pairs)</option>
+            <option value="3">3 Players (Trios)</option>
+            <option value="4">4 Players (Squads / Classic)</option>
+            <option value="5">5 Players</option>
+            <option value="6">6 Players</option>
+            <option value="LOT">A Lot! 🛋️🎉 (7+ Party Games)</option>
+          </select>
+        </div>
+
+        <!-- Ecosystem & Platform Filter -->
+        <div class="md:col-span-3">
+          <select id="platform-filter" class="w-full bg-gray-50 dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition">
+            <option value="ALL">All Ecosystems & Hardware</option>
+            <optgroup label="Consoles">
+              <option value="PlayStation">PlayStation (PS4 / PS5)</option>
+              <option value="Xbox">Xbox (One / Series X|S)</option>
+              <option value="Nintendo Switch">Nintendo Switch</option>
+            </optgroup>
+            <optgroup label="PC Launchers">
+              <option value="Steam">PC - Steam</option>
+              <option value="Epic">PC - Epic Games Store</option>
+              <option value="GOG">PC - GOG (DRM-Free)</option>
+            </optgroup>
+            <optgroup label="Cloud & Subscriptions (No Console/PC Needed)">
+              <option value="Game Pass">Xbox Game Pass Ultimate (Cloud)</option>
+              <option value="GeForce NOW">NVIDIA GeForce NOW</option>
+              <option value="Luna">Amazon Luna (Prime Cloud)</option>
+              <option value="Ubisoft+">Ubisoft+ Subscription</option>
+            </optgroup>
+          </select>
+        </div>
       </div>
-      <div class="mt-5 grid gap-3 border-t border-line pt-4 text-sm text-slate-300 sm:grid-cols-2">
-        <p><strong class="text-accent">Xbox Game Pass (All-Inclusive):</strong> l’abbonamento include un catalogo curato; non serve acquistare ogni titolo del Pass.</p>
-        <p><strong class="text-warn">GeForce NOW (BYOG):</strong> streammi giochi che <em>già possiedi</em>; serve una licenza valida sullo store della piattaforma.</p>
-      </div>
-      <div class="mt-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-slate-300">
-        <strong class="text-danger">Buyer Safety:</strong>
-        Distinzione netta tra <span class="text-accent">CD-Key</span> (riscatto ufficiale) e
-        <span class="text-danger">account secondari</span> (cessioni account — rischio alto, non equivalenti).
+
+      <!-- Verification Filter Toggle -->
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-800 text-xs">
+        <label class="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+          <input type="checkbox" id="badge-toggle" class="w-4 h-4 rounded text-emerald-500 bg-gray-100 dark:bg-gray-950 border-gray-300 dark:border-gray-800 focus:ring-0">
+          <span>Show only <strong class="text-emerald-600 dark:text-emerald-400">"Couch-Proof Verified"</strong> (Forum-tested local co-op)</span>
+        </label>
+        <span id="results-count" class="text-gray-500">Loading catalog...</span>
       </div>
     </section>
 
-    <div id="status" class="mb-4 text-sm text-slate-400">Caricamento catalogo…</div>
-    <div id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+    <!-- Games Grid -->
+    <div id="games-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
   </main>
 
-  <!-- Detail modal -->
-  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl">
-      <div class="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 id="modal-title" class="text-xl font-semibold"></h2>
-          <p id="modal-subtitle" class="text-sm text-slate-400"></p>
+  <!-- Game Details Modal -->
+  <div id="game-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl max-h-[94vh] flex flex-col">
+      <!-- Media Box: YouTube Verified Embed with Fallback Banner -->
+      <div id="modal-media-wrap" class="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden">
+        <div id="modal-video-container" class="w-full h-full"></div>
+        <button onclick="closeModal()" class="absolute top-4 right-4 z-30 bg-black/70 hover:bg-black text-white rounded-full w-9 h-9 flex items-center justify-center transition border border-gray-700">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Details Scroll Body -->
+      <div class="p-6 overflow-y-auto space-y-6 flex-1 text-gray-800 dark:text-gray-200">
+        <!-- Title & Badges -->
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 id="modal-title" class="text-2xl sm:text-3xl font-bold"></h2>
+            <div id="modal-badge-container" class="mt-2 flex flex-wrap items-center gap-2"></div>
+          </div>
+          <div class="text-right">
+            <span id="modal-discount" class="text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 px-2 py-1 rounded"></span>
+            <div id="modal-price" class="text-2xl font-black mt-1"></div>
+            <div id="modal-orig-price" class="text-xs text-gray-400 line-through"></div>
+          </div>
         </div>
-        <button type="button" id="modal-close" class="rounded border border-line px-3 py-1 text-sm hover:bg-line/40" aria-label="Chiudi">✕</button>
+
+        <!-- Technical Verification Matrix -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-gray-50 dark:bg-gray-950 p-4 rounded-xl border border-gray-200 dark:border-gray-800">
+          <div>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Local Player Count</span>
+            <div id="modal-players-spec" class="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1"></div>
+          </div>
+          <div>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Controller Compatibility</span>
+            <div id="modal-controller-spec" class="text-sm font-bold mt-1"></div>
+          </div>
+          <div>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Screen Mode</span>
+            <div id="modal-screen-mode" class="text-sm font-bold mt-1">Shared / Split-Screen</div>
+          </div>
+        </div>
+
+        <!-- Overview -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Game Overview</h3>
+          <p id="modal-short-desc" class="text-sm text-emerald-600 dark:text-emerald-300 font-medium mb-2 italic"></p>
+          <div id="modal-desc" class="text-sm leading-relaxed whitespace-pre-line text-gray-600 dark:text-gray-300 border-t border-gray-200 dark:border-gray-800 pt-3"></div>
+        </div>
+
+        <!-- Cloud Gaming & Subscription Ecosystems (Play without hardware) -->
+        <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="fa-solid fa-cloud text-blue-500"></i>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Cloud Gaming & Subscriptions (Play without Console or PC)</h4>
+          </div>
+          <div id="cloud-ecosystem-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <!-- Popolato dinamicamente con Game Pass, GeForce Now, Luna, Ubisoft+ -->
+          </div>
+        </div>
+
+        <!-- Official Stores Matrix -->
+        <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-circle-check text-blue-500"></i>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Official Platform Stores (100% Guaranteed)</h4>
+            </div>
+            <span class="text-[11px] text-gray-400">Direct store links for your region</span>
+          </div>
+          <div id="official-stores-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+        </div>
+
+        <!-- Secondary Key & Account Deals with Buyer Protection Guide -->
+        <div class="border-t border-gray-200 dark:border-gray-800 pt-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-tag text-amber-500"></i>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Digital Key Marketplaces (Lower Prices)</h4>
+            </div>
+            <span class="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 px-2 py-0.5 rounded font-medium">Global / Regional Keys</span>
+          </div>
+
+          <a id="modal-g2a-action" href="#" target="_blank" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm py-3 px-4 rounded-xl flex items-center justify-between transition shadow-md">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-key"></i> Compare Best Key Offers on G2A Marketplace</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+          </a>
+
+          <!-- Safety Buyer Guide -->
+          <div class="mt-3 bg-amber-50 dark:bg-gray-950 border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 text-xs space-y-2">
+            <div class="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>Important Buyer Safety Guide (Keys vs. Accounts)</span>
+            </div>
+            <p class="text-gray-600 dark:text-gray-400 leading-relaxed text-[11px]">
+              Third-party marketplaces list products from multiple independent vendors:
+            </p>
+            <ul class="list-disc list-inside text-[11px] text-gray-600 dark:text-gray-400 space-y-1 pl-1">
+              <li><strong>Digital Activation Keys (Recommended):</strong> You receive a code that you redeem directly on your personal Steam, PlayStation, Xbox, or Nintendo account. The game belongs permanently to you.</li>
+              <li><strong>Account Purchases:</strong> If a vendor sells a "Steam/PSN Account", you will receive login credentials. <em>Safety Rule:</em> If you choose an account, immediately change its password, associated email address, and activate two-factor authentication (2FA).</li>
+              <li>Always check the seller's positive feedback percentage (&gt;98% recommended) before finalizing your purchase.</li>
+            </ul>
+          </div>
+        </div>
       </div>
-      <div id="modal-shots" class="mb-4 flex gap-2 overflow-x-auto"></div>
-      <div class="mb-4 overflow-x-auto">
-        <table class="w-full min-w-[480px] border-collapse text-left text-sm">
-          <thead>
-            <tr class="border-b border-line text-slate-400">
-              <th class="py-2 pr-3 font-medium">Matrice tecnica</th>
-              <th class="py-2 font-medium">Valore</th>
-            </tr>
-          </thead>
-          <tbody id="modal-matrix"></tbody>
-        </table>
-      </div>
-      <div id="modal-safety" class="mb-4 text-sm"></div>
-      <div id="modal-stores" class="flex flex-wrap gap-2"></div>
     </div>
   </div>
 
-  <footer class="mx-auto max-w-6xl px-4 pb-10 text-center text-xs text-slate-500">
-    Affiliate G2A reflink-07f53ba10b · Hosted on GitHub Pages · Data via Supabase free tier
-  </footer>
-
   <script>
-    /** G2A affiliate — platform-targeted */
-    const G2A_REF = "reflink-07f53ba10b";
-    const SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem("SUPABASE_URL") || "";
-    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem("SUPABASE_ANON_KEY") || "";
+    const SUPABASE_URL = "https://eipnpzbkwzkvprsgpyuh.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpcG5wemJrd3prdnByc2dweXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzNzE4ODAsImV4cCI6MjEwNTk0Nzg4MH0.kSt6KwQoWzGaAxk2_6dlxUfdyHeKXV5W7kHDHJJKW9Q";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const PLAYER_OPTIONS = [
-      { id: "2", label: "2", min: 2, max: 2 },
-      { id: "3", label: "3", min: 3, max: 3 },
-      { id: "4", label: "4", min: 4, max: 4 },
-      { id: "5", label: "5", min: 5, max: 5 },
-      { id: "6", label: "6", min: 6, max: 6 },
-      { id: "alot", label: "A Lot! 🛋️🎉", min: 7, max: Infinity },
-    ];
+    let allGames = [];
+    let detectedCountry = "US";
+    let activeCardTimers = {};
 
-    /** Demo catalog used when Supabase is not configured (GitHub Pages zero-cost fallback). */
-    const DEMO_GAMES = [
-      {
-        id: "1",
-        title: "It Takes Two",
-        max_players: 2,
-        genres: ["Co-op", "Adventure"],
-        platforms: ["PC", "Xbox", "PlayStation"],
-        screenshots: [
-          "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80",
-          "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80",
-          "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80",
-        ],
-        cover: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&q=80",
-        gfn_status: "BYOG",
-        game_pass_status: "All-Inclusive",
-        buyer_type: "cd_key",
-        cpu: "Intel i5-8400 / Ryzen 5 1600",
-        gpu: "GTX 1060 / RX 580",
-        ram_gb: 8,
-        storage_gb: 50,
-        store_links: {
-          steam: "https://store.steampowered.com/app/1426210/",
-          xbox: "https://www.xbox.com/",
-          g2a: "https://www.g2a.com/",
-        },
-      },
-      {
-        id: "2",
-        title: "Moving Out 2",
-        max_players: 4,
-        genres: ["Party", "Physics"],
-        platforms: ["PC", "Xbox", "Nintendo"],
-        screenshots: [
-          "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=800&q=80",
-          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80",
-        ],
-        cover: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=600&q=80",
-        gfn_status: "BYOG",
-        game_pass_status: "All-Inclusive",
-        buyer_type: "cd_key",
-        cpu: "Intel i5-2500K / FX-6350",
-        gpu: "GTX 760 / R7 260X",
-        ram_gb: 8,
-        storage_gb: 10,
-        store_links: {
-          steam: "https://store.steampowered.com/",
-          xbox: "https://www.xbox.com/",
-          g2a: "https://www.g2a.com/",
-        },
-      },
-      {
-        id: "3",
-        title: "Overcooked! 2",
-        max_players: 4,
-        genres: ["Party", "Cooking"],
-        platforms: ["PC", "Xbox", "PlayStation", "Nintendo"],
-        screenshots: [
-          "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80",
-          "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=800&q=80",
-        ],
-        cover: "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=600&q=80",
-        gfn_status: "BYOG",
-        game_pass_status: "Not listed",
-        buyer_type: "cd_key",
-        cpu: "Intel Core 2 Duo E8400",
-        gpu: "GeForce GTX 660 / Radeon HD 7770",
-        ram_gb: 4,
-        storage_gb: 3,
-        store_links: {
-          steam: "https://store.steampowered.com/",
-          g2a: "https://www.g2a.com/",
-        },
-      },
-      {
-        id: "4",
-        title: "Pummel Party",
-        max_players: 8,
-        genres: ["Party", "Minigames"],
-        platforms: ["PC"],
-        screenshots: [
-          "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80",
-          "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80",
-          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80",
-        ],
-        cover: "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=600&q=80",
-        gfn_status: "BYOG",
-        game_pass_status: "Not listed",
-        buyer_type: "cd_key",
-        cpu: "Intel i5-2400 / FX-6300",
-        gpu: "GTX 650 / HD 7770",
-        ram_gb: 4,
-        storage_gb: 4,
-        store_links: {
-          steam: "https://store.steampowered.com/",
-          g2a: "https://www.g2a.com/",
-        },
-      },
-      {
-        id: "5",
-        title: "Demo Secondary Risk",
-        max_players: 3,
-        genres: ["Demo"],
-        platforms: ["PC"],
-        screenshots: [
-          "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&q=80",
-        ],
-        cover: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&q=80",
-        gfn_status: "Unavailable",
-        game_pass_status: "Not listed",
-        buyer_type: "secondary_account",
-        cpu: "n/a",
-        gpu: "n/a",
-        ram_gb: null,
-        storage_gb: null,
-        store_links: {
-          g2a: "https://www.g2a.com/",
-        },
-      },
-    ];
+    // 1. Dark/Light Mode Management (OS Default + User Override)
+    function initTheme() {
+      const storedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = storedTheme === 'dark' || (!storedTheme && prefersDark);
+      
+      applyTheme(isDark);
 
-    let games = [];
-    let activeFilter = null;
-    const carousels = new WeakMap();
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        const currentlyDark = document.documentElement.classList.contains('dark');
+        applyTheme(!currentlyDark);
+      });
+    }
 
-    function g2aUrl(base) {
-      if (!base) return "#";
-      try {
-        const u = new URL(base);
-        u.searchParams.set("gtag", G2A_REF);
-        return u.toString();
-      } catch {
-        return base.includes("?") ? `${base}&gtag=${G2A_REF}` : `${base}?gtag=${G2A_REF}`;
+    function applyTheme(isDark) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('theme-icon').className = 'fa-solid fa-moon';
+        localStorage.setItem('theme', 'light');
       }
     }
 
-    function normalizeGame(row) {
-      const shots = Array.isArray(row.screenshots)
-        ? row.screenshots.filter(Boolean)
-        : typeof row.screenshots === "string"
-          ? (() => { try { const p = JSON.parse(row.screenshots); return Array.isArray(p) ? p : []; } catch { return []; } })()
-          : [];
-      return {
-        ...row,
-        max_players: Number(row.max_players) || 0,
-        screenshots: shots,
-        genres: Array.isArray(row.genres) ? row.genres : [],
-        platforms: Array.isArray(row.platforms) ? row.platforms : [],
-        store_links: row.store_links && typeof row.store_links === "object" ? row.store_links : {},
-        buyer_type: row.buyer_type || "unknown",
-      };
+    function detectUserRegion() {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+        if (tz.includes("Rome") || tz.includes("Europe/Vatican")) detectedCountry = "IT";
+        else if (tz.includes("London")) detectedCountry = "GB";
+        else if (tz.includes("Berlin") || tz.includes("Vienna")) detectedCountry = "DE";
+        else if (tz.includes("Paris")) detectedCountry = "FR";
+        else if (tz.includes("Madrid")) detectedCountry = "ES";
+        else detectedCountry = "US";
+      } catch (e) {
+        detectedCountry = "US";
+      }
+      document.getElementById("detected-country").innerText = detectedCountry;
+    }
+
+    function getRegionalSteamUrl(baseStoreUrl) {
+      if (!baseStoreUrl) return "#";
+      const separator = baseStoreUrl.includes("?") ? "&" : "?";
+      return `${baseStoreUrl}${separator}cc=${detectedCountry.toLowerCase()}`;
     }
 
     async function loadGames() {
-      const status = document.getElementById("status");
-      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-        try {
-          const res = await fetch(
-            `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/games?select=*&order=title.asc`,
-            {
-              headers: {
-                apikey: SUPABASE_ANON_KEY,
-                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-              },
-            }
-          );
-          if (!res.ok) throw new Error(`Supabase ${res.status}`);
-          const data = await res.json();
-          games = (data || []).map(normalizeGame);
-          status.textContent = `${games.length} titoli da Supabase`;
-          return;
-        } catch (err) {
-          console.warn("Supabase fallback → demo", err);
-        }
-      }
-      games = DEMO_GAMES.map(normalizeGame);
-      status.textContent = `${games.length} titoli demo (configura SUPABASE_URL / SUPABASE_ANON_KEY per live data)`;
-    }
+      const { data, error } = await supabaseClient
+        .from('couch_games')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    function renderFilters() {
-      const root = document.getElementById("player-filters");
-      root.innerHTML = "";
-      const allBtn = document.createElement("button");
-      allBtn.type = "button";
-      allBtn.className = filterClass(activeFilter === null);
-      allBtn.textContent = "Tutti";
-      allBtn.addEventListener("click", () => {
-        activeFilter = null;
-        renderFilters();
-        renderGrid();
-      });
-      root.appendChild(allBtn);
-
-      PLAYER_OPTIONS.forEach((opt) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = filterClass(activeFilter === opt.id);
-        btn.textContent = opt.label;
-        btn.dataset.filter = opt.id;
-        btn.addEventListener("click", () => {
-          activeFilter = opt.id;
-          renderFilters();
-          renderGrid();
-        });
-        root.appendChild(btn);
-      });
-    }
-
-    function filterClass(on) {
-      return [
-        "rounded-lg border px-3 py-2 text-sm transition",
-        on ? "border-accent bg-accent/20 text-accent" : "border-line bg-ink/40 hover:border-accent/50",
-      ].join(" ");
-    }
-
-    function filteredGames() {
-      if (!activeFilter) return games;
-      const opt = PLAYER_OPTIONS.find((o) => o.id === activeFilter);
-      if (!opt) return games;
-      return games.filter((g) => g.max_players >= opt.min && g.max_players <= opt.max);
-    }
-
-    function renderGrid() {
-      const grid = document.getElementById("grid");
-      const list = filteredGames();
-      grid.innerHTML = "";
-      if (!list.length) {
-        grid.innerHTML = `<p class="col-span-full text-slate-400">Nessun titolo per questo filtro.</p>`;
+      if (error) {
+        document.getElementById("games-grid").innerHTML = `
+          <div class="col-span-full text-center py-10 text-red-500">
+            Error loading catalog: ${error.message}
+          </div>`;
         return;
       }
-      list.forEach((game) => grid.appendChild(buildCard(game)));
+
+      allGames = data || [];
+      renderGames(allGames);
     }
 
-    function buildCard(game) {
-      const card = document.createElement("article");
-      card.className =
-        "group relative overflow-hidden rounded-2xl border border-line bg-ink/50 shadow-lg shadow-black/20";
-      card.tabIndex = 0;
-
-      const media = document.createElement("div");
-      media.className = "relative aspect-[16/10] overflow-hidden bg-line/40";
-
-      const cover = document.createElement("img");
-      cover.src = game.cover || game.screenshots[0] || "";
-      cover.alt = game.title;
-      cover.className = "card-shot absolute inset-0 h-full w-full object-cover";
-      cover.loading = "lazy";
-      media.appendChild(cover);
-
-      const shotLayer = document.createElement("img");
-      shotLayer.alt = "";
-      shotLayer.className = "card-shot absolute inset-0 h-full w-full object-cover opacity-0";
-      shotLayer.loading = "lazy";
-      media.appendChild(shotLayer);
-
-      const dots = document.createElement("div");
-      dots.className =
-        "pointer-events-none absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1 opacity-0 transition group-hover:opacity-100";
-      (game.screenshots.length ? game.screenshots : [cover.src]).forEach((_, i) => {
-        const d = document.createElement("span");
-        d.className = "carousel-dot h-1.5 w-1.5 rounded-full bg-white/40";
-        if (i === 0) d.classList.add("active");
-        dots.appendChild(d);
-      });
-      media.appendChild(dots);
-
-      const body = document.createElement("div");
-      body.className = "space-y-2 p-4";
-      body.innerHTML = `
-        <h3 class="font-semibold leading-snug">${escapeHtml(game.title)}</h3>
-        <p class="text-xs text-slate-400">${game.max_players}+ local · ${(game.genres || []).slice(0, 3).join(" · ")}</p>
-        <div class="flex flex-wrap gap-1 text-[11px]">
-          <span class="rounded border border-accent/30 px-2 py-0.5 text-accent" title="Catalogo incluso nell'abbonamento">GP: ${escapeHtml(game.game_pass_status || "—")}</span>
-          <span class="rounded border border-warn/30 px-2 py-0.5 text-warn" title="BYOG: serve licenza propria">GFN: ${escapeHtml(game.gfn_status || "—")}</span>
-          <span class="rounded border ${game.buyer_type === "cd_key" ? "border-accent/30 text-accent" : "border-danger/40 text-danger"} px-2 py-0.5">${
-            game.buyer_type === "cd_key"
-              ? "CD-Key"
-              : game.buyer_type === "secondary_account"
-                ? "Account secondario ⚠"
-                : "Buyer ?"
-          }</span>
-        </div>
-        <button type="button" class="mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm hover:border-accent/50 details-btn">Dettagli & store</button>
-      `;
-
-      card.appendChild(media);
-      card.appendChild(body);
-
-      setupCarousel(card, media, cover, shotLayer, dots, game.screenshots);
-      body.querySelector(".details-btn").addEventListener("click", () => openModal(game));
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") openModal(game);
-      });
-      return card;
-    }
-
-    function setupCarousel(card, media, cover, shotLayer, dots, screenshots) {
-      const shots = screenshots && screenshots.length ? screenshots : [cover.src];
-      let idx = 0;
-      let timer = null;
-
-      const paint = () => {
-        const url = shots[idx % shots.length];
-        if (idx === 0) {
-          cover.style.opacity = "1";
-          shotLayer.style.opacity = "0";
-        } else {
-          shotLayer.src = url;
-          cover.style.opacity = "0";
-          shotLayer.style.opacity = "1";
-        }
-        [...dots.children].forEach((d, i) => d.classList.toggle("active", i === idx % shots.length));
+    // 2. Platform Icons Helper (Reactive to selected filter)
+    function getPlatformIcons(game, activeFilter) {
+      const platforms = game.platforms || ["PC"];
+      const iconMap = {
+        "PC": { icon: "fa-brands fa-windows", name: "PC" },
+        "Steam": { icon: "fa-brands fa-steam", name: "Steam" },
+        "Epic": { icon: "fa-solid fa-gamepad", name: "Epic Games" },
+        "GOG": { icon: "fa-solid fa-shield", name: "GOG" },
+        "PlayStation": { icon: "fa-brands fa-playstation", name: "PlayStation" },
+        "Xbox": { icon: "fa-brands fa-xbox", name: "Xbox" },
+        "Nintendo Switch": { icon: "fa-solid fa-gamepad", name: "Switch" },
+        "Game Pass": { icon: "fa-brands fa-xbox", name: "Game Pass Cloud" },
+        "GeForce NOW": { icon: "fa-solid fa-bolt", name: "GeForce NOW" },
+        "Luna": { icon: "fa-brands fa-amazon", name: "Amazon Luna" }
       };
 
-      const start = () => {
-        if (shots.length < 2) return;
-        stop();
-        timer = setInterval(() => {
-          idx = (idx + 1) % shots.length;
-          paint();
-        }, 900);
-      };
-      const stop = () => {
-        if (timer) clearInterval(timer);
-        timer = null;
-        idx = 0;
-        paint();
-      };
-
-      media.addEventListener("mouseenter", start);
-      media.addEventListener("mouseleave", stop);
-      carousels.set(card, { start, stop });
-    }
-
-    function openModal(game) {
-      const modal = document.getElementById("modal");
-      document.getElementById("modal-title").textContent = game.title;
-      document.getElementById("modal-subtitle").textContent =
-        `${game.max_players} giocatori local · ${(game.platforms || []).join(", ")}`;
-
-      const shots = document.getElementById("modal-shots");
-      shots.innerHTML = "";
-      (game.screenshots || []).forEach((url) => {
-        const img = document.createElement("img");
-        img.src = url;
-        img.alt = "";
-        img.className = "h-24 w-40 shrink-0 rounded-lg object-cover";
-        shots.appendChild(img);
-      });
-
-      const matrix = document.getElementById("modal-matrix");
-      const rows = [
-        ["CPU", game.cpu || "—"],
-        ["GPU", game.gpu || "—"],
-        ["RAM (GB)", game.ram_gb ?? "—"],
-        ["Storage (GB)", game.storage_gb ?? "—"],
-        ["Max players", game.max_players],
-        ["Genres", (game.genres || []).join(", ") || "—"],
-        ["Xbox Game Pass", `${game.game_pass_status || "—"} (All-Inclusive catalog when listed)`],
-        ["GeForce NOW", `${game.gfn_status || "—"} (BYOG — license required)`],
-      ];
-      matrix.innerHTML = rows
-        .map(
-          ([k, v]) =>
-            `<tr class="border-b border-line/60"><td class="py-2 pr-3 text-slate-400">${escapeHtml(String(k))}</td><td class="py-2">${escapeHtml(String(v))}</td></tr>`
-        )
-        .join("");
-
-      const safety = document.getElementById("modal-safety");
-      if (game.buyer_type === "cd_key") {
-        safety.innerHTML =
-          `<p class="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-accent"><strong>CD-Key:</strong> chiave da riscattare sullo store ufficiale. Preferita.</p>`;
-      } else if (game.buyer_type === "secondary_account") {
-        safety.innerHTML =
-          `<p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger"><strong>Account secondario:</strong> non è una CD-Key. Rischio ban / perdita accesso. Sconsigliato.</p>`;
-      } else {
-        safety.innerHTML =
-          `<p class="rounded-lg border border-line px-3 py-2 text-slate-300">Tipo offerta non classificato — verifica se è CD-Key o account.</p>`;
+      if (activeFilter && activeFilter !== "ALL") {
+        const match = iconMap[activeFilter] || { icon: "fa-solid fa-gamepad", name: activeFilter };
+        return `<span class="inline-flex items-center gap-1 text-[11px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                  <i class="${match.icon}"></i> ${match.name}
+                </span>`;
       }
 
-      const stores = document.getElementById("modal-stores");
-      stores.innerHTML = "";
-      const links = game.store_links || {};
-      const buttons = [
-        { key: "steam", label: "Steam", href: links.steam, className: "border-sky-500/40 text-sky-300" },
-        { key: "xbox", label: "Xbox / Microsoft", href: links.xbox, className: "border-emerald-500/40 text-emerald-300" },
-        { key: "g2a", label: "G2A (affiliate)", href: g2aUrl(links.g2a || "https://www.g2a.com/"), className: "border-warn/40 text-warn" },
-        { key: "official", label: "Official", href: links.official, className: "border-line text-slate-200" },
-      ];
-      buttons.forEach((b) => {
-        if (!b.href && b.key !== "g2a") return;
-        const a = document.createElement("a");
-        a.href = b.href || g2aUrl("https://www.g2a.com/");
-        a.target = "_blank";
-        a.rel = "noopener noreferrer sponsored";
-        a.className = `rounded-lg border px-3 py-2 text-sm hover:bg-white/5 ${b.className}`;
-        a.textContent = b.label;
-        stores.appendChild(a);
-      });
+      return platforms.slice(0, 4).map(p => {
+        const item = iconMap[p] || { icon: "fa-solid fa-gamepad", name: p };
+        return `<span title="${item.name}" class="text-gray-500 hover:text-emerald-500 transition"><i class="${item.icon}"></i></span>`;
+      }).join(' ');
+    }
 
-      modal.classList.remove("hidden");
-      modal.setAttribute("aria-hidden", "false");
+    // 3. Screenshot Carousel on Hover (Zero Lag, Real In-Game Views)
+    function startCardCarousel(cardId, screenshotsJson) {
+      if (!screenshotsJson) return;
+      let shots = [];
+      try { shots = typeof screenshotsJson === 'string' ? JSON.parse(screenshotsJson) : screenshotsJson; } catch(e){}
+      if (!shots || shots.length < 2) return;
+
+      let idx = 0;
+      const imgElem = document.getElementById(`card-img-${cardId}`);
+      if (!imgElem) return;
+
+      activeCardTimers[cardId] = setInterval(() => {
+        idx = (idx + 1) % shots.length;
+        imgElem.src = shots[idx];
+      }, 1400);
+    }
+
+    function stopCardCarousel(cardId, defaultBanner) {
+      if (activeCardTimers[cardId]) {
+        clearInterval(activeCardTimers[cardId]);
+        delete activeCardTimers[cardId];
+      }
+      const imgElem = document.getElementById(`card-img-${cardId}`);
+      if (imgElem && defaultBanner) {
+        imgElem.src = defaultBanner;
+      }
+    }
+
+    function renderGames(games) {
+      const container = document.getElementById("games-grid");
+      const currentPlatform = document.getElementById("platform-filter").value;
+      document.getElementById("results-count").innerText = `${games.length} titles cataloged`;
+
+      if (!games.length) {
+        container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-500">No couch games match your current filter selection.</div>`;
+        return;
+      }
+
+      container.innerHTML = games.map(game => {
+        const isCouchProof = game.status === "TESTED_COUCH_PROOF";
+        const badgeHtml = isCouchProof
+          ? `<span class="badge-couch text-white text-[10px] font-bold uppercase px-2.5 py-1 rounded-full flex items-center gap-1 shadow"><i class="fa-solid fa-couch"></i> Couch-Proof Verified</span>`
+          : `<span class="badge-untested text-white text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full"><i class="fa-solid fa-clock-rotate-left"></i> Community Testing</span>`;
+
+        const platformBadge = getPlatformIcons(game, currentPlatform);
+        const screenshotsSafe = JSON.stringify(game.screenshots || [game.banner]).replace(/"/g, '&quot;');
+
+        return `
+          <div class="bg-white dark:bg-gray-900/70 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden flex flex-col hover:border-emerald-500 dark:hover:border-emerald-500 transition duration-200 group shadow-sm hover:shadow-md">
+            <!-- Cover with Screenshot Carousel on Hover -->
+            <div class="relative aspect-video bg-black overflow-hidden cursor-pointer" 
+                 onclick="openModal('${game.id}')"
+                 onmouseenter="startCardCarousel('${game.id}', ${screenshotsSafe})"
+                 onmouseleave="stopCardCarousel('${game.id}', '${game.banner}')">
+              <img id="card-img-${game.id}" src="${game.banner}" alt="${game.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+              <div class="absolute top-3 left-3">${badgeHtml}</div>
+              <div class="absolute top-3 right-3 bg-black/80 backdrop-blur border border-gray-700 px-2 py-0.5 rounded text-xs font-bold text-emerald-400">
+                -${game.discount_pct}%
+              </div>
+            </div>
+
+            <!-- Card Content -->
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <div class="flex items-center gap-2 text-xs">
+                    ${platformBadge}
+                  </div>
+                  <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <i class="fa-solid fa-users"></i> ${game.players}
+                  </span>
+                </div>
+
+                <h3 class="font-bold text-lg leading-snug group-hover:text-emerald-500 transition cursor-pointer" onclick="openModal('${game.id}')">
+                  ${game.title}
+                </h3>
+              </div>
+
+              <!-- Price & CTA -->
+              <div class="mt-5 pt-4 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between gap-2">
+                <div>
+                  <div class="text-xs text-gray-400 line-through">${game.original_price}</div>
+                  <div class="text-lg font-bold">${game.price}</div>
+                </div>
+                <button onclick="openModal('${game.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-gamepad"></i> Stores & Cloud
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openModal(gameId) {
+      const game = allGames.find(g => g.id === gameId);
+      if (!game) return;
+
+      document.getElementById("modal-title").innerText = game.title;
+      document.getElementById("modal-price").innerText = game.price;
+      document.getElementById("modal-orig-price").innerText = game.original_price;
+      document.getElementById("modal-discount").innerText = `-${game.discount_pct}%`;
+      document.getElementById("modal-players-spec").innerText = `${game.players} Local Players`;
+      document.getElementById("modal-controller-spec").innerText = game.controller_ready ? "Full Gamepad Support" : "Keyboard / Partial Gamepad";
+      document.getElementById("modal-short-desc").innerText = game.short_description || "";
+      document.getElementById("modal-desc").innerText = game.description || "Detailed technical description not available.";
+
+      const isCouchProof = game.status === "TESTED_COUCH_PROOF";
+      const badgeContainer = document.getElementById("modal-badge-container");
+      badgeContainer.innerHTML = isCouchProof 
+        ? `<span class="badge-couch text-white text-xs font-bold uppercase px-3 py-1 rounded-full flex items-center gap-1.5 shadow"><i class="fa-solid fa-couch"></i> Couch-Proof Verified</span>`
+        : `<span class="badge-untested text-white text-xs font-semibold uppercase px-3 py-1 rounded-full flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left"></i> Community Testing (Vote via Telegram)</span>`;
+
+      // Media Player: YouTube embed verificato o fallback su banner
+      const videoContainer = document.getElementById("modal-video-container");
+      if (game.youtube_trailer_id) {
+        videoContainer.innerHTML = `
+          <iframe class="w-full h-full border-0" 
+                  src="https://www.youtube-nocookie.com/embed/${game.youtube_trailer_id}?autoplay=1&rel=0&modestbranding=1" 
+                  title="${game.title} Trailer" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allowfullscreen></iframe>`;
+      } else {
+        videoContainer.innerHTML = `<img src="${game.banner}" class="w-full h-full object-cover">`;
+      }
+
+      // Cloud Ecosystems & Subscriptions Box
+      const cloudContainer = document.getElementById("cloud-ecosystem-container");
+      cloudContainer.innerHTML = `
+        <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-brands fa-xbox text-green-500 text-lg"></i>
+            <div>
+              <p class="font-bold">Xbox Game Pass Ultimate</p>
+              <p class="text-[10px] text-gray-500">Play on TV, phone & browser without a console</p>
+            </div>
+          </div>
+          <a href="https://www.g2a.com/search?query=Xbox%20Game%20Pass%20Ultimate&ref=reflink-07f53ba10b" target="_blank" class="text-[11px] font-bold text-amber-500 hover:underline">Vouchers</a>
+        </div>
+
+        <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-bolt text-emerald-500 text-lg"></i>
+            <div>
+              <p class="font-bold">NVIDIA GeForce NOW</p>
+              <p class="text-[10px] text-gray-500">Stream your Steam/Epic copy at 60 FPS (Free tier available)</p>
+            </div>
+          </div>
+          <a href="https://www.nvidia.com/geforce-now/" target="_blank" class="text-[11px] font-bold text-blue-400 hover:underline">Free Trial</a>
+        </div>
+
+        <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-brands fa-amazon text-amber-500 text-lg"></i>
+            <div>
+              <p class="font-bold">Amazon Luna</p>
+              <p class="text-[10px] text-gray-500">Included with Amazon Prime + Luna Couch party system</p>
+            </div>
+          </div>
+          <a href="https://luna.amazon.com/" target="_blank" class="text-[11px] font-bold text-amber-500 hover:underline">Prime Cloud</a>
+        </div>
+
+        <div class="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-u text-blue-500 text-lg"></i>
+            <div>
+              <p class="font-bold">Ubisoft+ Classics</p>
+              <p class="text-[10px] text-gray-500">Multi-access subscription on PC, PlayStation & Cloud</p>
+            </div>
+          </div>
+          <a href="https://store.ubisoft.com/ubisoftplus" target="_blank" class="text-[11px] font-bold text-blue-400 hover:underline">Catalog</a>
+        </div>
+      `;
+
+      // Official Stores Matrix
+      const titleEncoded = encodeURIComponent(game.title);
+      const officialGrid = document.getElementById("official-stores-grid");
+      officialGrid.innerHTML = `
+        <a href="${getRegionalSteamUrl(game.store_url)}" target="_blank" class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-center hover:border-blue-500 transition">
+          <i class="fa-brands fa-steam text-lg text-blue-400 mb-1"></i>
+          <p class="text-xs font-bold">Steam Store</p>
+          <span class="text-[10px] text-gray-400">Official PC</span>
+        </a>
+        <a href="https://store.playstation.com/en-us/search/${titleEncoded}" target="_blank" class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-center hover:border-blue-600 transition">
+          <i class="fa-brands fa-playstation text-lg text-blue-500 mb-1"></i>
+          <p class="text-xs font-bold">PlayStation Store</p>
+          <span class="text-[10px] text-gray-400">PS4 / PS5</span>
+        </a>
+        <a href="https://www.xbox.com/en-us/search?q=${titleEncoded}" target="_blank" class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-center hover:border-green-500 transition">
+          <i class="fa-brands fa-xbox text-lg text-green-500 mb-1"></i>
+          <p class="text-xs font-bold">Xbox Store</p>
+          <span class="text-[10px] text-gray-400">Series X|S & One</span>
+        </a>
+        <a href="https://www.nintendo.com/us/search/#q=${titleEncoded}&p=1&cat=gme" target="_blank" class="p-2.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-center hover:border-red-500 transition">
+          <i class="fa-solid fa-gamepad text-lg text-red-500 mb-1"></i>
+          <p class="text-xs font-bold">Nintendo eShop</p>
+          <span class="text-[10px] text-gray-400">Switch Digital</span>
+        </a>
+      `;
+
+      // G2A Key Action Link
+      document.getElementById("modal-g2a-action").href = game.g2a_url;
+
+      document.getElementById("game-modal").classList.remove("hidden");
     }
 
     function closeModal() {
-      const modal = document.getElementById("modal");
-      modal.classList.add("hidden");
-      modal.setAttribute("aria-hidden", "true");
+      // Ferma YouTube immediatamente alla chiusura
+      document.getElementById("modal-video-container").innerHTML = "";
+      document.getElementById("game-modal").classList.add("hidden");
     }
 
-    function escapeHtml(s) {
-      return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+    function applyFilters() {
+      const search = document.getElementById("search-input").value.toLowerCase();
+      const players = document.getElementById("players-filter").value;
+      const platform = document.getElementById("platform-filter").value;
+      const onlyCouchProof = document.getElementById("badge-toggle").checked;
+
+      const filtered = allGames.filter(game => {
+        const matchesTitle = game.title.toLowerCase().includes(search);
+        const matchesCouch = !onlyCouchProof || game.status === "TESTED_COUCH_PROOF";
+
+        let matchesPlayers = true;
+        const pStr = (game.players || "").toLowerCase();
+        if (players === "2") matchesPlayers = pStr.includes("2") && !pStr.includes("up to 4");
+        else if (players === "3") matchesPlayers = pStr.includes("3") || pStr.includes("4") || pStr.includes("6");
+        else if (players === "4") matchesPlayers = pStr.includes("4") || pStr.includes("2-4");
+        else if (players === "5") matchesPlayers = pStr.includes("5") || pStr.includes("6") || pStr.includes("8");
+        else if (players === "6") matchesPlayers = pStr.includes("6") || pStr.includes("8");
+        else if (players === "LOT") matchesPlayers = pStr.includes("7") || pStr.includes("8") || pStr.includes("party") || pStr.includes("16");
+
+        let matchesPlatform = true;
+        if (platform !== "ALL") {
+          const gamePlatforms = game.platforms || ["PC"];
+          matchesPlatform = gamePlatforms.some(p => p.toLowerCase().includes(platform.toLowerCase()));
+        }
+
+        return matchesTitle && matchesCouch && matchesPlayers && matchesPlatform;
+      });
+
+      renderGames(filtered);
     }
 
-    document.getElementById("modal-close").addEventListener("click", closeModal);
-    document.getElementById("modal").addEventListener("click", (e) => {
-      if (e.target.id === "modal") closeModal();
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeModal();
+    document.getElementById("search-input").addEventListener("input", applyFilters);
+    document.getElementById("players-filter").addEventListener("change", applyFilters);
+    document.getElementById("platform-filter").addEventListener("change", applyFilters);
+    document.getElementById("badge-toggle").addEventListener("change", applyFilters);
+
+    window.addEventListener("click", (e) => {
+      if (e.target.id === "game-modal") closeModal();
     });
 
-    (async function init() {
-      renderFilters();
-      await loadGames();
-      renderGrid();
-    })();
+    initTheme();
+    detectUserRegion();
+    loadGames();
   </script>
 </body>
 </html>
