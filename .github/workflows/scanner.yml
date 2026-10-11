@@ -1,0 +1,56 @@
+name: Cloud Catalog Scanner
+
+on:
+  schedule:
+    # Free-tier friendly: once daily UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "agent.py"
+      - "run_cloud_scan.py"
+      - "requirements.txt"
+      - ".github/workflows/scanner.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Scan & upsert to Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: |
+          python -m py_compile agent.py run_cloud_scan.py
+          python run_cloud_scan.py --dry-run --no-rawg
+
+      - name: Run cloud scan → Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          RAWG_API_KEY: ${{ secrets.RAWG_API_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || { [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && [ -z "$SUPABASE_ANON_KEY" ]; }; then
+            echo "::warning::Supabase secrets missing — dry-run only (configure SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)."
+            python run_cloud_scan.py --dry-run --verbose
+            exit 0
+          fi
+          python run_cloud_scan.py --verbose

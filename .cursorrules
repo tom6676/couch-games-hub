@@ -1,0 +1,52 @@
+# Party Cloud Board — Project Rules (IRONCLAD)
+
+## Stack (mandatory)
+- Frontend: HTML5 + Tailwind CSS via CDN + Vanilla JS (no React/Vue/build step).
+- Backend/data: Supabase (free tier only) — Postgres + JSONB columns.
+- Hosting: GitHub Pages (static `index.html` at repo root or `/docs`).
+- Automation: GitHub Actions (`.github/workflows/scanner.yml`) using repository Secrets.
+- Language for scrapers/agents: Python 3 (stdlib + `requests` / `supabase` client only when needed).
+
+## Budget
+- Tassativamente **0€**. Use only free tiers:
+  - GitHub Actions free minutes
+  - Supabase free project
+  - GitHub Pages
+  - Tailwind CDN (no paid UI kits)
+- No paid APIs, no paid proxies, no paid CDNs beyond free allowances.
+
+## Monetization
+- Affiliate: G2A reflink-07f53ba10b (platform-targeted deep links).
+- All outbound store CTAs that go through G2A MUST append/use the approved affiliate parameters.
+- Never hardcode paid ads networks. Keep revenue to affiliate clicks only.
+
+## Buyer Safety (non-negotiable UX)
+- Draw a **net distinction** between:
+  - **CD-Key**: retail key redeemed on the official store / platform launcher.
+  - **Account secondario / shared account**: third-party account handoff — higher risk; label clearly as unsafe-by-default.
+- UI must never present secondary accounts as equivalent to CD-Keys.
+- Prefer CD-Key offers in ranking and default filters when both exist.
+
+## Cloud Transparency (non-negotiable copy)
+- **Xbox Game Pass (All-Inclusive)**: subscription includes a curated catalog; games are playable without a separate ownership license for catalog titles.
+- **GeForce NOW (BYOG — Bring Your Own Game)**: streaming of titles the user **already owns**; a valid platform license is required. Never imply GFN includes ownership.
+- Every cloud badge/tooltip must state this difference explicitly.
+
+## Data contracts (Supabase)
+- `screenshots` column: `jsonb` array of URL strings (never a single string; never `null` if empty — use `[]`).
+- Technical columns (examples): `max_players`, `genres`, `platforms`, `store_links`, `gfn_status`, `game_pass_status`, `buyer_type` (`cd_key` | `secondary_account` | `unknown`).
+- Agents MUST coerce types before upsert to avoid HTTP 400 (arrays → list, numbers → int/float, missing → null/`[]`).
+
+## Frontend UX contracts
+- Player filters: `2`, `3`, `4`, `5`, `6`, and `"A Lot! 🛋️🎉"` (maps to max_players >= 7 or party flag).
+- Screenshot carousel on **hover** of game cards.
+- Detail modal: technical matrices + store buttons (Steam / Xbox / G2A affiliate / official).
+
+## DevOps
+- Secrets expected in GitHub Actions: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (or anon+RLS-safe key), optional `RAWG_API_KEY` if free tier used.
+- Never commit `.env` or service-role keys.
+- Workflows must be idempotent and fail soft on single-title parse errors.
+
+## Code style
+- Prefer small, readable Vanilla JS modules inline or in a single `app.js` if split later.
+- Python agents: explicit column payloads, `on_conflict` upserts, structured logging to stdout for Actions.

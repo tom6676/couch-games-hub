@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Party Cloud Board — Local Co-op & Cloud</title>
+  <meta name="description" content="Filtra party games, confronta Xbox Game Pass All-Inclusive vs GeForce NOW BYOG, e compra solo CD-Key sicure." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#0b1220",
+            panel: "#121a2b",
+            line: "#243049",
+            accent: "#3dd6c6",
+            warn: "#f0b429",
+            danger: "#f07178",
+          },
+          fontFamily: {
+            display: ['"Segoe UI"', "system-ui", "sans-serif"],
+            body: ['"Segoe UI"', "system-ui", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --bg-a: #0b1220;
+      --bg-b: #152238;
+    }
+    body {
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1d4e4a33, transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, #3b2f6a33, transparent 55%),
+        linear-gradient(160deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
+    }
+    .card-shot {
+      transition: opacity 0.25s ease;
+    }
+    .carousel-dot.active {
+      background: #3dd6c6;
+    }
+    #modal[aria-hidden="false"] {
+      display: flex;
+    }
+  </style>
+</head>
+<body class="font-body text-slate-100 antialiased">
+  <header class="border-b border-line/80 bg-ink/70 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5">
+      <div>
+        <p class="text-xs uppercase tracking-[0.2em] text-accent">Party Cloud Board</p>
+        <h1 class="font-display text-2xl font-semibold tracking-tight sm:text-3xl">Local co-op · Cloud ready</h1>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs">
+        <span class="rounded border border-accent/40 bg-accent/10 px-3 py-1 text-accent" title="Catalogo incluso nell'abbonamento">Xbox Game Pass · All-Inclusive</span>
+        <span class="rounded border border-warn/40 bg-warn/10 px-3 py-1 text-warn" title="Serve licenza propria (BYOG)">GeForce NOW · BYOG</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-8">
+    <section class="mb-8 rounded-2xl border border-line bg-panel/80 p-5 shadow-xl shadow-black/20">
+      <h2 class="mb-2 text-lg font-semibold">Filtra per giocatori</h2>
+      <p class="mb-4 text-sm text-slate-400">Quanti siete sul divano? Filtra i titoli local multiplayer.</p>
+      <div id="player-filters" class="flex flex-wrap gap-2" role="group" aria-label="Filtro giocatori">
+        <!-- filled by JS: 2,3,4,5,6, A Lot! -->
+      </div>
+      <div class="mt-5 grid gap-3 border-t border-line pt-4 text-sm text-slate-300 sm:grid-cols-2">
+        <p><strong class="text-accent">Xbox Game Pass (All-Inclusive):</strong> l’abbonamento include un catalogo curato; non serve acquistare ogni titolo del Pass.</p>
+        <p><strong class="text-warn">GeForce NOW (BYOG):</strong> streammi giochi che <em>già possiedi</em>; serve una licenza valida sullo store della piattaforma.</p>
+      </div>
+      <div class="mt-3 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-slate-300">
+        <strong class="text-danger">Buyer Safety:</strong>
+        Distinzione netta tra <span class="text-accent">CD-Key</span> (riscatto ufficiale) e
+        <span class="text-danger">account secondari</span> (cessioni account — rischio alto, non equivalenti).
+      </div>
+    </section>
+
+    <div id="status" class="mb-4 text-sm text-slate-400">Caricamento catalogo…</div>
+    <div id="grid" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+  </main>
+
+  <!-- Detail modal -->
+  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-panel p-5 shadow-2xl">
+      <div class="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 id="modal-title" class="text-xl font-semibold"></h2>
+          <p id="modal-subtitle" class="text-sm text-slate-400"></p>
+        </div>
+        <button type="button" id="modal-close" class="rounded border border-line px-3 py-1 text-sm hover:bg-line/40" aria-label="Chiudi">✕</button>
+      </div>
+      <div id="modal-shots" class="mb-4 flex gap-2 overflow-x-auto"></div>
+      <div class="mb-4 overflow-x-auto">
+        <table class="w-full min-w-[480px] border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-line text-slate-400">
+              <th class="py-2 pr-3 font-medium">Matrice tecnica</th>
+              <th class="py-2 font-medium">Valore</th>
+            </tr>
+          </thead>
+          <tbody id="modal-matrix"></tbody>
+        </table>
+      </div>
+      <div id="modal-safety" class="mb-4 text-sm"></div>
+      <div id="modal-stores" class="flex flex-wrap gap-2"></div>
+    </div>
+  </div>
+
+  <footer class="mx-auto max-w-6xl px-4 pb-10 text-center text-xs text-slate-500">
+    Affiliate G2A reflink-07f53ba10b · Hosted on GitHub Pages · Data via Supabase free tier
+  </footer>
+
+  <script>
+    /** G2A affiliate — platform-targeted */
+    const G2A_REF = "reflink-07f53ba10b";
+    const SUPABASE_URL = window.SUPABASE_URL || localStorage.getItem("SUPABASE_URL") || "";
+    const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || localStorage.getItem("SUPABASE_ANON_KEY") || "";
+
+    const PLAYER_OPTIONS = [
+      { id: "2", label: "2", min: 2, max: 2 },
+      { id: "3", label: "3", min: 3, max: 3 },
+      { id: "4", label: "4", min: 4, max: 4 },
+      { id: "5", label: "5", min: 5, max: 5 },
+      { id: "6", label: "6", min: 6, max: 6 },
+      { id: "alot", label: "A Lot! 🛋️🎉", min: 7, max: Infinity },
+    ];
+
+    /** Demo catalog used when Supabase is not configured (GitHub Pages zero-cost fallback). */
+    const DEMO_GAMES = [
+      {
+        id: "1",
+        title: "It Takes Two",
+        max_players: 2,
+        genres: ["Co-op", "Adventure"],
+        platforms: ["PC", "Xbox", "PlayStation"],
+        screenshots: [
+          "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80",
+          "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80",
+          "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80",
+        ],
+        cover: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=600&q=80",
+        gfn_status: "BYOG",
+        game_pass_status: "All-Inclusive",
+        buyer_type: "cd_key",
+        cpu: "Intel i5-8400 / Ryzen 5 1600",
+        gpu: "GTX 1060 / RX 580",
+        ram_gb: 8,
+        storage_gb: 50,
+        store_links: {
+          steam: "https://store.steampowered.com/app/1426210/",
+          xbox: "https://www.xbox.com/",
+          g2a: "https://www.g2a.com/",
+        },
+      },
+      {
+        id: "2",
+        title: "Moving Out 2",
+        max_players: 4,
+        genres: ["Party", "Physics"],
+        platforms: ["PC", "Xbox", "Nintendo"],
+        screenshots: [
+          "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=800&q=80",
+          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80",
+        ],
+        cover: "https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=600&q=80",
+        gfn_status: "BYOG",
+        game_pass_status: "All-Inclusive",
+        buyer_type: "cd_key",
+        cpu: "Intel i5-2500K / FX-6350",
+        gpu: "GTX 760 / R7 260X",
+        ram_gb: 8,
+        storage_gb: 10,
+        store_links: {
+          steam: "https://store.steampowered.com/",
+          xbox: "https://www.xbox.com/",
+          g2a: "https://www.g2a.com/",
+        },
+      },
+      {
+        id: "3",
+        title: "Overcooked! 2",
+        max_players: 4,
+        genres: ["Party", "Cooking"],
+        platforms: ["PC", "Xbox", "PlayStation", "Nintendo"],
+        screenshots: [
+          "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&q=80",
+          "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=800&q=80",
+        ],
+        cover: "https://images.unsplash.com/photo-1612287230202-1ff1d85d1bdf?w=600&q=80",
+        gfn_status: "BYOG",
+        game_pass_status: "Not listed",
+        buyer_type: "cd_key",
+        cpu: "Intel Core 2 Duo E8400",
+        gpu: "GeForce GTX 660 / Radeon HD 7770",
+        ram_gb: 4,
+        storage_gb: 3,
+        store_links: {
+          steam: "https://store.steampowered.com/",
+          g2a: "https://www.g2a.com/",
+        },
+      },
+      {
+        id: "4",
+        title: "Pummel Party",
+        max_players: 8,
+        genres: ["Party", "Minigames"],
+        platforms: ["PC"],
+        screenshots: [
+          "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80",
+          "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&q=80",
+          "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80",
+        ],
+        cover: "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=600&q=80",
+        gfn_status: "BYOG",
+        game_pass_status: "Not listed",
+        buyer_type: "cd_key",
+        cpu: "Intel i5-2400 / FX-6300",
+        gpu: "GTX 650 / HD 7770",
+        ram_gb: 4,
+        storage_gb: 4,
+        store_links: {
+          steam: "https://store.steampowered.com/",
+          g2a: "https://www.g2a.com/",
+        },
+      },
+      {
+        id: "5",
+        title: "Demo Secondary Risk",
+        max_players: 3,
+        genres: ["Demo"],
+        platforms: ["PC"],
+        screenshots: [
+          "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&q=80",
+        ],
+        cover: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&q=80",
+        gfn_status: "Unavailable",
+        game_pass_status: "Not listed",
+        buyer_type: "secondary_account",
+        cpu: "n/a",
+        gpu: "n/a",
+        ram_gb: null,
+        storage_gb: null,
+        store_links: {
+          g2a: "https://www.g2a.com/",
+        },
+      },
+    ];
+
+    let games = [];
+    let activeFilter = null;
+    const carousels = new WeakMap();
+
+    function g2aUrl(base) {
+      if (!base) return "#";
+      try {
+        const u = new URL(base);
+        u.searchParams.set("gtag", G2A_REF);
+        return u.toString();
+      } catch {
+        return base.includes("?") ? `${base}&gtag=${G2A_REF}` : `${base}?gtag=${G2A_REF}`;
+      }
+    }
+
+    function normalizeGame(row) {
+      const shots = Array.isArray(row.screenshots)
+        ? row.screenshots.filter(Boolean)
+        : typeof row.screenshots === "string"
+          ? (() => { try { const p = JSON.parse(row.screenshots); return Array.isArray(p) ? p : []; } catch { return []; } })()
+          : [];
+      return {
+        ...row,
+        max_players: Number(row.max_players) || 0,
+        screenshots: shots,
+        genres: Array.isArray(row.genres) ? row.genres : [],
+        platforms: Array.isArray(row.platforms) ? row.platforms : [],
+        store_links: row.store_links && typeof row.store_links === "object" ? row.store_links : {},
+        buyer_type: row.buyer_type || "unknown",
+      };
+    }
+
+    async function loadGames() {
+      const status = document.getElementById("status");
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          const res = await fetch(
+            `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/games?select=*&order=title.asc`,
+            {
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+            }
+          );
+          if (!res.ok) throw new Error(`Supabase ${res.status}`);
+          const data = await res.json();
+          games = (data || []).map(normalizeGame);
+          status.textContent = `${games.length} titoli da Supabase`;
+          return;
+        } catch (err) {
+          console.warn("Supabase fallback → demo", err);
+        }
+      }
+      games = DEMO_GAMES.map(normalizeGame);
+      status.textContent = `${games.length} titoli demo (configura SUPABASE_URL / SUPABASE_ANON_KEY per live data)`;
+    }
+
+    function renderFilters() {
+      const root = document.getElementById("player-filters");
+      root.innerHTML = "";
+      const allBtn = document.createElement("button");
+      allBtn.type = "button";
+      allBtn.className = filterClass(activeFilter === null);
+      allBtn.textContent = "Tutti";
+      allBtn.addEventListener("click", () => {
+        activeFilter = null;
+        renderFilters();
+        renderGrid();
+      });
+      root.appendChild(allBtn);
+
+      PLAYER_OPTIONS.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = filterClass(activeFilter === opt.id);
+        btn.textContent = opt.label;
+        btn.dataset.filter = opt.id;
+        btn.addEventListener("click", () => {
+          activeFilter = opt.id;
+          renderFilters();
+          renderGrid();
+        });
+        root.appendChild(btn);
+      });
+    }
+
+    function filterClass(on) {
+      return [
+        "rounded-lg border px-3 py-2 text-sm transition",
+        on ? "border-accent bg-accent/20 text-accent" : "border-line bg-ink/40 hover:border-accent/50",
+      ].join(" ");
+    }
+
+    function filteredGames() {
+      if (!activeFilter) return games;
+      const opt = PLAYER_OPTIONS.find((o) => o.id === activeFilter);
+      if (!opt) return games;
+      return games.filter((g) => g.max_players >= opt.min && g.max_players <= opt.max);
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("grid");
+      const list = filteredGames();
+      grid.innerHTML = "";
+      if (!list.length) {
+        grid.innerHTML = `<p class="col-span-full text-slate-400">Nessun titolo per questo filtro.</p>`;
+        return;
+      }
+      list.forEach((game) => grid.appendChild(buildCard(game)));
+    }
+
+    function buildCard(game) {
+      const card = document.createElement("article");
+      card.className =
+        "group relative overflow-hidden rounded-2xl border border-line bg-ink/50 shadow-lg shadow-black/20";
+      card.tabIndex = 0;
+
+      const media = document.createElement("div");
+      media.className = "relative aspect-[16/10] overflow-hidden bg-line/40";
+
+      const cover = document.createElement("img");
+      cover.src = game.cover || game.screenshots[0] || "";
+      cover.alt = game.title;
+      cover.className = "card-shot absolute inset-0 h-full w-full object-cover";
+      cover.loading = "lazy";
+      media.appendChild(cover);
+
+      const shotLayer = document.createElement("img");
+      shotLayer.alt = "";
+      shotLayer.className = "card-shot absolute inset-0 h-full w-full object-cover opacity-0";
+      shotLayer.loading = "lazy";
+      media.appendChild(shotLayer);
+
+      const dots = document.createElement("div");
+      dots.className =
+        "pointer-events-none absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1 opacity-0 transition group-hover:opacity-100";
+      (game.screenshots.length ? game.screenshots : [cover.src]).forEach((_, i) => {
+        const d = document.createElement("span");
+        d.className = "carousel-dot h-1.5 w-1.5 rounded-full bg-white/40";
+        if (i === 0) d.classList.add("active");
+        dots.appendChild(d);
+      });
+      media.appendChild(dots);
+
+      const body = document.createElement("div");
+      body.className = "space-y-2 p-4";
+      body.innerHTML = `
+        <h3 class="font-semibold leading-snug">${escapeHtml(game.title)}</h3>
+        <p class="text-xs text-slate-400">${game.max_players}+ local · ${(game.genres || []).slice(0, 3).join(" · ")}</p>
+        <div class="flex flex-wrap gap-1 text-[11px]">
+          <span class="rounded border border-accent/30 px-2 py-0.5 text-accent" title="Catalogo incluso nell'abbonamento">GP: ${escapeHtml(game.game_pass_status || "—")}</span>
+          <span class="rounded border border-warn/30 px-2 py-0.5 text-warn" title="BYOG: serve licenza propria">GFN: ${escapeHtml(game.gfn_status || "—")}</span>
+          <span class="rounded border ${game.buyer_type === "cd_key" ? "border-accent/30 text-accent" : "border-danger/40 text-danger"} px-2 py-0.5">${
+            game.buyer_type === "cd_key"
+              ? "CD-Key"
+              : game.buyer_type === "secondary_account"
+                ? "Account secondario ⚠"
+                : "Buyer ?"
+          }</span>
+        </div>
+        <button type="button" class="mt-1 w-full rounded-lg border border-line bg-panel px-3 py-2 text-sm hover:border-accent/50 details-btn">Dettagli & store</button>
+      `;
+
+      card.appendChild(media);
+      card.appendChild(body);
+
+      setupCarousel(card, media, cover, shotLayer, dots, game.screenshots);
+      body.querySelector(".details-btn").addEventListener("click", () => openModal(game));
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") openModal(game);
+      });
+      return card;
+    }
+
+    function setupCarousel(card, media, cover, shotLayer, dots, screenshots) {
+      const shots = screenshots && screenshots.length ? screenshots : [cover.src];
+      let idx = 0;
+      let timer = null;
+
+      const paint = () => {
+        const url = shots[idx % shots.length];
+        if (idx === 0) {
+          cover.style.opacity = "1";
+          shotLayer.style.opacity = "0";
+        } else {
+          shotLayer.src = url;
+          cover.style.opacity = "0";
+          shotLayer.style.opacity = "1";
+        }
+        [...dots.children].forEach((d, i) => d.classList.toggle("active", i === idx % shots.length));
+      };
+
+      const start = () => {
+        if (shots.length < 2) return;
+        stop();
+        timer = setInterval(() => {
+          idx = (idx + 1) % shots.length;
+          paint();
+        }, 900);
+      };
+      const stop = () => {
+        if (timer) clearInterval(timer);
+        timer = null;
+        idx = 0;
+        paint();
+      };
+
+      media.addEventListener("mouseenter", start);
+      media.addEventListener("mouseleave", stop);
+      carousels.set(card, { start, stop });
+    }
+
+    function openModal(game) {
+      const modal = document.getElementById("modal");
+      document.getElementById("modal-title").textContent = game.title;
+      document.getElementById("modal-subtitle").textContent =
+        `${game.max_players} giocatori local · ${(game.platforms || []).join(", ")}`;
+
+      const shots = document.getElementById("modal-shots");
+      shots.innerHTML = "";
+      (game.screenshots || []).forEach((url) => {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "";
+        img.className = "h-24 w-40 shrink-0 rounded-lg object-cover";
+        shots.appendChild(img);
+      });
+
+      const matrix = document.getElementById("modal-matrix");
+      const rows = [
+        ["CPU", game.cpu || "—"],
+        ["GPU", game.gpu || "—"],
+        ["RAM (GB)", game.ram_gb ?? "—"],
+        ["Storage (GB)", game.storage_gb ?? "—"],
+        ["Max players", game.max_players],
+        ["Genres", (game.genres || []).join(", ") || "—"],
+        ["Xbox Game Pass", `${game.game_pass_status || "—"} (All-Inclusive catalog when listed)`],
+        ["GeForce NOW", `${game.gfn_status || "—"} (BYOG — license required)`],
+      ];
+      matrix.innerHTML = rows
+        .map(
+          ([k, v]) =>
+            `<tr class="border-b border-line/60"><td class="py-2 pr-3 text-slate-400">${escapeHtml(String(k))}</td><td class="py-2">${escapeHtml(String(v))}</td></tr>`
+        )
+        .join("");
+
+      const safety = document.getElementById("modal-safety");
+      if (game.buyer_type === "cd_key") {
+        safety.innerHTML =
+          `<p class="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-accent"><strong>CD-Key:</strong> chiave da riscattare sullo store ufficiale. Preferita.</p>`;
+      } else if (game.buyer_type === "secondary_account") {
+        safety.innerHTML =
+          `<p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-danger"><strong>Account secondario:</strong> non è una CD-Key. Rischio ban / perdita accesso. Sconsigliato.</p>`;
+      } else {
+        safety.innerHTML =
+          `<p class="rounded-lg border border-line px-3 py-2 text-slate-300">Tipo offerta non classificato — verifica se è CD-Key o account.</p>`;
+      }
+
+      const stores = document.getElementById("modal-stores");
+      stores.innerHTML = "";
+      const links = game.store_links || {};
+      const buttons = [
+        { key: "steam", label: "Steam", href: links.steam, className: "border-sky-500/40 text-sky-300" },
+        { key: "xbox", label: "Xbox / Microsoft", href: links.xbox, className: "border-emerald-500/40 text-emerald-300" },
+        { key: "g2a", label: "G2A (affiliate)", href: g2aUrl(links.g2a || "https://www.g2a.com/"), className: "border-warn/40 text-warn" },
+        { key: "official", label: "Official", href: links.official, className: "border-line text-slate-200" },
+      ];
+      buttons.forEach((b) => {
+        if (!b.href && b.key !== "g2a") return;
+        const a = document.createElement("a");
+        a.href = b.href || g2aUrl("https://www.g2a.com/");
+        a.target = "_blank";
+        a.rel = "noopener noreferrer sponsored";
+        a.className = `rounded-lg border px-3 py-2 text-sm hover:bg-white/5 ${b.className}`;
+        a.textContent = b.label;
+        stores.appendChild(a);
+      });
+
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeModal() {
+      const modal = document.getElementById("modal");
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    document.getElementById("modal-close").addEventListener("click", closeModal);
+    document.getElementById("modal").addEventListener("click", (e) => {
+      if (e.target.id === "modal") closeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+
+    (async function init() {
+      renderFilters();
+      await loadGames();
+      renderGrid();
+    })();
+  </script>
+</body>
+</html>
